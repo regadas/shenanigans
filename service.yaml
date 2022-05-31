@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Service
+metadata:
+  # annotations:
+  #   networking.gke.io/internal-load-balancer-allow-global-access: "true"
+  #   networking.gke.io/load-balancer-type: Internal
+  labels:
+    app: flink
+    cluster: flink
+    component: jobmanager
+    flinkoperator.k8s.io/revision-name: flink-7c84bbff6d
+  name: flink-jobmanager
+  namespace: flink-dev
+spec:
+  # clusterIP: 10.160.245.228
+  # clusterIPs:
+  # - 10.160.245.228
+  # externalTrafficPolicy: Cluster
+  # ipFamilyPolicy: SingleStack
+  ports:
+    - name: rpc
+      nodePort: 30256
+      port: 6123
+      protocol: TCP
+      targetPort: rpc
+    - name: blob
+      nodePort: 31929
+      port: 6124
+      protocol: TCP
+      targetPort: blob
+    - name: query
+      nodePort: 32526
+      port: 6125
+      protocol: TCP
+      targetPort: query
+    - name: ui
+      nodePort: 30474
+      port: 8081
+      protocol: TCP
+      targetPort: ui
+  selector:
+    app: flink
+    cluster: flink
+    component: jobmanager
+  sessionAffinity: None
+  type: NodePort

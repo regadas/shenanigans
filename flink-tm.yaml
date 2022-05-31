@@ -1,0 +1,133 @@
+apiVersion: apps/v1
+kind: StatefulSet
+# kind: Deployment
+metadata:
+  labels:
+    app: flink
+    cluster: flink
+    component: taskmanager
+    execution-id: flink
+    flinkoperator.k8s.io/revision-name: flink-7c84bbff6d
+    interruptible: "false"
+  name: flink-taskmanager
+  namespace: flink-dev
+spec:
+  podManagementPolicy: Parallel
+  replicas: 400
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: flink
+      cluster: flink
+      component: taskmanager
+      execution-id: flink
+      interruptible: "false"
+  serviceName: flink-taskmanager
+  template:
+    metadata:
+      annotations:
+        flyte.lyft.net/deployment: gke
+        scheduling.k8s.io/group-name: flink-flink
+      creationTimestamp: null
+      labels:
+        app: flink
+        cluster: flink
+        component: taskmanager
+        execution-id: flink
+        interruptible: "false"
+    spec:
+      nodeSelector:
+        cloud.google.com/gke-nodepool: trino-xpn-gew-dev-n1-hm-64
+      containers:
+        - args:
+            - taskmanager
+          image: flink:latest
+          imagePullPolicy: IfNotPresent
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - sleep
+                  - "30"
+          livenessProbe:
+            failureThreshold: 5
+            initialDelaySeconds: 5
+            periodSeconds: 60
+            successThreshold: 1
+            tcpSocket:
+              port: 6122
+            timeoutSeconds: 10
+          name: taskmanager
+          ports:
+            - containerPort: 6121
+              name: data
+              protocol: TCP
+            - containerPort: 6122
+              name: rpc
+              protocol: TCP
+            - containerPort: 6125
+              name: query
+              protocol: TCP
+            - containerPort: 9249
+              name: prom
+              protocol: TCP
+            - containerPort: 9999
+              name: jmx
+              protocol: TCP
+          readinessProbe:
+            failureThreshold: 60
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            successThreshold: 1
+            tcpSocket:
+              port: 6122
+            timeoutSeconds: 10
+          resources:
+            limits:
+              cpu: "8"
+              memory: 32Gi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+            - mountPath: /flink-tmp
+              name: pvc-tm
+            - mountPath: /opt/flink/conf
+              name: flink-config-volume
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      securityContext:
+        fsGroup: 9999
+      serviceAccount: default
+      serviceAccountName: default
+      terminationGracePeriodSeconds: 60
+      volumes:
+        - configMap:
+            defaultMode: 420
+            name: flink-configmap
+          name: flink-config-volume
+        # - name: pvc-tm
+        #   ephemeral:
+        #     volumeClaimTemplate:
+        #       spec:
+        #         accessModes:
+        #           - ReadWriteOnce
+        #         resources:
+        #           requests:
+        #             storage: 150Gi
+        #         storageClassName: pd-ssd
+  updateStrategy:
+    rollingUpdate:
+      partition: 0
+    type: RollingUpdate
+  volumeClaimTemplates:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: pvc-tm
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 32Gi
+        storageClassName: pd-ssd

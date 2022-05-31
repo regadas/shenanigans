@@ -1,0 +1,14 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  labels:
+    app: flink
+    cluster: flink
+  name: flink
+  namespace: flink-dev
+spec:
+  maxUnavailable: "0%"
+  selector:
+    matchLabels:
+      app: flink
+      cluster: flink
